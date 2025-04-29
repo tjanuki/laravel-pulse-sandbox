@@ -12,8 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Execute the blogs count command hourly
-        $schedule->command('blogs:count-hourly')->hourly();
+        // Replace the hourly blog count with the 5-minute metrics reporter
+        $schedule->command('blogs:report-metrics')->everyFiveMinutes();
+
+        // Run daily to clean up expired metrics
+        $schedule->command('status:purge-old')->daily();
     }
 
     /**

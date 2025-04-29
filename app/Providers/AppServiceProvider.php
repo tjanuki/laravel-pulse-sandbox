@@ -2,8 +2,7 @@
 
 namespace App\Providers;
 
-use App\Livewire\Pulse\BlogsMonitor;
-use App\Livewire\Pulse\QueueAlert;
+use App\Livewire\Pulse\StatusMonitor;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -23,7 +22,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Register Pulse Custom Cards using Livewire component registration
-        Livewire::component('pulse.queue-alert', QueueAlert::class);
-        Livewire::component('pulse.blogs-monitor', BlogsMonitor::class);
+        Livewire::component('pulse.status-monitor', StatusMonitor::class);
+
+        // Keep any other component registrations if needed
+        // Example: Livewire::component('pulse.queue-alert', QueueAlert::class);
     }
 }
