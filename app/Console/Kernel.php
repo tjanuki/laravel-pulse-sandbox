@@ -12,7 +12,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Replace the hourly blog count with the 5-minute metrics reporter
+        // Update all status metrics at once
+        $schedule->command('status:update-all')->everyFiveMinutes();
+
+        // Also keep the original reporters for backward compatibility
         $schedule->command('blogs:report-metrics')->everyFiveMinutes();
 
         // Run daily to clean up expired metrics

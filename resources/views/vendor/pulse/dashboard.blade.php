@@ -6,7 +6,7 @@
         cols="4"
         rows="2"
         source="blogs"
-        key="hourly_count"
+        key="count"
         title="Blog Activity Monitor"
         :warningThreshold="0"
     />
@@ -20,7 +20,7 @@
         cols="4"
         rows="2"
         source="external-service"
-        key="health"
+        key="count"
         title="External Service Health"
         :warningThreshold="50"
     />
