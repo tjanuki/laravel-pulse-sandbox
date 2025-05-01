@@ -2,11 +2,11 @@
 
 /**
  * External Test Script for Status Metrics API
- * 
+ *
  * This is a simple script to demonstrate how an external application
  * would send metrics to your Status Metrics API.
- * 
- * Usage: 
+ *
+ * Usage:
  * 1. Save this file as test-status-api.php
  * 2. Run: php test-status-api.php http://your-laravel-app.test/api/status-metrics
  */
@@ -25,7 +25,7 @@ $metrics = [
     [
         'source' => 'external-service',
         'key' => 'health',
-        'value' => '95',
+        'value' => '98',
         'status' => 'ok',
         'metadata' => [
             'response_time' => '120ms',
@@ -50,7 +50,7 @@ $metrics = [
 // Send each metric to the API
 foreach ($metrics as $index => $metric) {
     echo "Sending metric " . ($index + 1) . "/" . count($metrics) . ": {$metric['source']} - {$metric['key']}\n";
-    
+
     $ch = curl_init($apiUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -59,13 +59,13 @@ foreach ($metrics as $index => $metric) {
         'Content-Type: application/json',
         'Accept: application/json'
     ]);
-    
+
     $response = curl_exec($ch);
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
     echo "  Status Code: {$statusCode}\n";
-    
+
     if ($statusCode >= 200 && $statusCode < 300) {
         echo "  ✓ Success!\n";
         $responseData = json_decode($response, true);
@@ -74,7 +74,7 @@ foreach ($metrics as $index => $metric) {
         echo "  ✗ Failed!\n";
         echo "  Response: {$response}\n";
     }
-    
+
     echo "\n";
 }
 
