@@ -1,61 +1,141 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Metrics Service for Laravel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This package provides a reusable metrics service and command structure for Laravel applications. It allows sending metrics to a status API endpoint from different sources.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.1+
+- Laravel 9+
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Installation
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. Copy the service and command files to your Laravel project.
+2. Register the `MetricsServiceProvider` in your `config/app.php` file:
 
-## Learning Laravel
+```php
+'providers' => [
+    // Other Service Providers...
+    App\Providers\MetricsServiceProvider::class,
+],
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+3. Publish the config file:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+php artisan vendor:publish --provider="App\Providers\MetricsServiceProvider" --tag="config"
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Configuration
 
-## Laravel Sponsors
+After publishing the config file, you can set your metrics configurations in `config/services/metrics.php` or through environment variables:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```
+# Required - this must be set to an external API endpoint
+METRICS_API_URL=https://your-metrics-api-endpoint.com/api/status-metrics
 
-### Premium Partners
+# Optional threshold configurations
+BLOGS_HOURLY_WARNING=0
+EXTERNAL_SERVICE_HEALTH_WARNING=98
+EXTERNAL_SERVICE_HEALTH_ERROR=95
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development/)**
-- **[Active Logic](https://activelogic.com)**
+**Important**: The `METRICS_API_URL` must be set to an external API endpoint and is a required configuration.
 
-## Contributing
+## Available Commands
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Send Blog Metrics
 
-## Code of Conduct
+Sends blog-related metrics to the status API:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+php artisan send-metrics:blogs
+```
 
-## Security Vulnerabilities
+### Send External Service Metrics
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Sends simulated external service metrics to the status API:
 
-## License
+```bash
+php artisan send-metrics:external-service
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The API endpoint is configured solely through the configuration file or environment variables and cannot be overridden via command-line arguments.
+
+```bash
+# Example of running the commands
+php artisan send-metrics:blogs
+php artisan send-metrics:external-service
+```
+
+## Creating Your Own Metrics Command
+
+To create a new metrics command, extend the `AbstractSendMetricsCommand` class:
+
+```php
+<?php
+
+namespace App\Console\Commands;
+
+use App\Services\MetricsService;
+
+class SendMyServiceMetricsCommand extends AbstractSendMetricsCommand
+{
+    public const METRICS_SOURCE = 'my-service';
+    
+    public const METRICS_KEY_STATUS = 'status';
+    public const METRICS_KEY_PERFORMANCE = 'performance';
+    
+    protected $signature = 'send-metrics:my-service';
+    protected $description = 'Send my service metrics to the status API';
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    protected function getMetricsSource(): string
+    {
+        return self::METRICS_SOURCE;
+    }
+
+    protected function getMetricsData(): array
+    {
+        // Collect your metrics data here
+        return [
+            [
+                'key' => self::METRICS_KEY_STATUS,
+                'value' => 'ok',
+                'status' => 'ok',
+                'metadata' => [
+                    'timing' => MetricsService::TIMING_FIVE_MINUTES,
+                ],
+            ],
+            // Add more metrics...
+        ];
+    }
+}
+```
+
+Then register your command in the `MetricsServiceProvider::boot()` method.
+
+## Using the Metrics Service Directly
+
+You can also use the `MetricsService` class directly for more customized metrics reporting:
+
+```php
+$metricsService = new MetricsService('my-custom-source');
+$response = $metricsService->sendMetric('custom_metric', $value, 'ok', [
+    'additional' => 'metadata',
+]);
+```
+
+## Timing Constants
+
+The `MetricsService` class provides several timing constants for common reporting intervals:
+
+- `MetricsService::TIMING_FIVE_MINUTES`
+- `MetricsService::TIMING_HOURLY`
+- `MetricsService::TIMING_DAILY`
+- `MetricsService::TIMING_TOTAL`
+
+Use these constants in your metrics metadata to indicate their reporting frequency.
