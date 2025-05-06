@@ -22,7 +22,7 @@ abstract class AbstractSendMetricsCommand extends Command
      * @return string
      */
     abstract protected function getMetricsSource(): string;
-    
+
     /**
      * Get the metrics data to send.
      * Should be overridden by child classes.
@@ -45,38 +45,38 @@ abstract class AbstractSendMetricsCommand extends Command
     public function handle(): int
     {
         // Get the API URL from configuration
-        $apiUrl = config('services.metrics.api_url');
-        
+        $apiUrl = config('metrics.api_url');
+
         // Create the metrics service with the appropriate source
         $this->metricsService = new MetricsService($this->getMetricsSource(), $apiUrl);
-        
+
         // Get the metrics data
         $metrics = $this->getMetricsData();
-        
+
         // Convert Collection to array if necessary
         if ($metrics instanceof Collection) {
             $metrics = $metrics->toArray();
         }
-        
+
         // Track success status
         $success = true;
         $totalMetrics = count($metrics);
-        
+
         // Create a progress bar for multiple metrics
         if ($totalMetrics > 1) {
             $bar = $this->output->createProgressBar($totalMetrics);
             $bar->start();
         }
-        
+
         // Send each metric
         foreach ($metrics as $index => $metric) {
             $metricKey = $metric['key'];
-            
+
             // Log if verbose
             if ($this->option('verbose')) {
                 $this->info("Sending metric {$metricKey}");
             }
-            
+
             // Send the metric
             $response = $this->metricsService->sendMetric(
                 $metricKey,
@@ -84,7 +84,7 @@ abstract class AbstractSendMetricsCommand extends Command
                 $metric['status'] ?? 'ok',
                 $metric['metadata'] ?? []
             );
-            
+
             // Check response
             if (!$response->successful()) {
                 $this->error("Failed to send metric {$metricKey}: {$response->status()}");
@@ -92,19 +92,19 @@ abstract class AbstractSendMetricsCommand extends Command
             } elseif ($this->option('verbose')) {
                 $this->info("Successfully sent metric {$metricKey}");
             }
-            
+
             // Advance progress bar
             if ($totalMetrics > 1) {
                 $bar->advance();
             }
         }
-        
+
         // Finish progress bar
         if ($totalMetrics > 1) {
             $bar->finish();
             $this->newLine();
         }
-        
+
         // Output final status
         if ($success) {
             $this->info("All metrics sent successfully");

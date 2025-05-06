@@ -34,10 +34,10 @@ class MetricsService
     public function __construct(string $source, ?string $apiUrl = null)
     {
         $this->source = $source;
-        $this->apiUrl = $apiUrl ?? config('services.metrics.api_url');
-        
+        $this->apiUrl = $apiUrl ?? config('metrics.api_url');
+
         if (empty($this->apiUrl)) {
-            throw new \InvalidArgumentException('Metrics API URL must be configured in services.metrics.api_url');
+            throw new \InvalidArgumentException('Metrics API URL must be configured in metrics.api_url');
         }
     }
 
@@ -103,21 +103,21 @@ class MetricsService
             if ($value <= $errorThreshold) {
                 return 'error';
             }
-            
+
             if ($value <= $warningThreshold) {
                 return 'warning';
             }
-            
+
             return 'ok';
         } else {
             if ($value >= $errorThreshold) {
                 return 'error';
             }
-            
+
             if ($value >= $warningThreshold) {
                 return 'warning';
             }
-            
+
             return 'ok';
         }
     }

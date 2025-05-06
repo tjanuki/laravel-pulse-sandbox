@@ -18,8 +18,8 @@ class MetricsServiceProvider extends ServiceProvider
 
         $this->app->singleton(MetricsService::class, function ($app) {
             return new MetricsService(
-                config('services.metrics.default_source', 'application'),
-                config('services.metrics.api_url')
+                config('metrics.default_source', 'application'),
+                config('metrics.api_url')
             );
         });
     }
