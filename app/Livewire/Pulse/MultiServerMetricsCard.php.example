@@ -1,0 +1,224 @@
+<?php
+
+namespace App\Livewire\Pulse;
+
+use App\Models\ServerRegistration;
+use App\Models\StatusMetric;
+use Illuminate\Support\Collection;
+use Laravel\Pulse\Livewire\Card;
+use Livewire\Attributes\Lazy;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
+
+#[Lazy]
+class MultiServerMetricsCard extends Card
+{
+    /**
+     * User configurable properties
+     */
+    public string $title = 'Server Metrics';
+    
+    // Metric filtering
+    public ?string $source = null;
+    public ?string $metricKey = null;
+    
+    // Server filtering
+    #[Url]
+    public ?string $environment = null;
+    
+    #[Url]
+    public ?string $region = null;
+    
+    #[Url]
+    public ?string $serverName = null;
+    
+    // View options
+    public string $groupBy = 'server'; // Options: server, environment, source, key
+    public bool $showOnlyAlerts = false;
+    public int $limit = 10;
+    public int $refreshInterval = 5; // seconds
+    
+    // Expandable details
+    public $expand = true;
+    
+    /**
+     * Get available environments for filtering.
+     */
+    #[Computed]
+    public function environments(): Collection
+    {
+        return ServerRegistration::where('active', true)
+            ->distinct()
+            ->pluck('environment')
+            ->filter();
+    }
+    
+    /**
+     * Get available regions for filtering.
+     */
+    #[Computed]
+    public function regions(): Collection
+    {
+        $query = ServerRegistration::where('active', true);
+        
+        if ($this->environment) {
+            $query->where('environment', $this->environment);
+        }
+        
+        return $query->distinct()->pluck('region')->filter();
+    }
+    
+    /**
+     * Get available servers for filtering.
+     */
+    #[Computed]
+    public function servers(): Collection
+    {
+        $query = ServerRegistration::where('active', true);
+        
+        if ($this->environment) {
+            $query->where('environment', $this->environment);
+        }
+        
+        if ($this->region) {
+            $query->where('region', $this->region);
+        }
+        
+        return $query->orderBy('server_name')->get();
+    }
+    
+    /**
+     * Get metrics data.
+     */
+    private function getMetrics(): Collection
+    {
+        $query = new StatusMetric();
+        
+        // Apply filters
+        if ($this->source) {
+            $query = $query->where('source', $this->source);
+        }
+        
+        if ($this->metricKey) {
+            $query = $query->where('key', $this->metricKey);
+        }
+        
+        if ($this->environment) {
+            $query = $query->byEnvironment($this->environment);
+        }
+        
+        if ($this->region) {
+            $query = $query->byRegion($this->region);
+        }
+        
+        if ($this->serverName) {
+            $query = $query->byServer($this->serverName);
+        }
+        
+        if ($this->showOnlyAlerts) {
+            $query = $query->onlyAlerts();
+        }
+        
+        // Get latest metrics (grouped by source+key+server to avoid duplicates)
+        return $query->latest()
+            ->take($this->limit * 5) // Get more than we need for grouping
+            ->get()
+            ->groupBy(function ($metric) {
+                // Create a composite key for grouping
+                return "{$metric->source}:{$metric->key}:{$metric->server_name}";
+            })
+            ->map(function ($group) {
+                // Return only the most recent metric for each group
+                return $group->first();
+            })
+            ->take($this->limit)
+            ->values();
+    }
+    
+    /**
+     * Group metrics by the selected criteria.
+     */
+    private function groupMetrics(Collection $metrics): Collection
+    {
+        switch ($this->groupBy) {
+            case 'environment':
+                return $metrics->groupBy('environment');
+            case 'source':
+                return $metrics->groupBy('source');
+            case 'key':
+                return $metrics->groupBy('key');
+            case 'server':
+            default:
+                return $metrics->groupBy('server_name');
+        }
+    }
+    
+    /**
+     * Get servers with alert status.
+     */
+    #[Computed]
+    public function alertingServers(): Collection
+    {
+        $query = StatusMetric::onlyAlerts();
+        
+        if ($this->environment) {
+            $query = $query->byEnvironment($this->environment);
+        }
+        
+        if ($this->region) {
+            $query = $query->byRegion($this->region);
+        }
+        
+        // Get servers with active alerts
+        return $query->select('server_name')
+            ->distinct()
+            ->pluck('server_name');
+    }
+    
+    /**
+     * Get inactive servers (not reported recently).
+     */
+    #[Computed]
+    public function inactiveServers(): Collection
+    {
+        $query = ServerRegistration::inactive(30); // 30 minutes threshold
+        
+        if ($this->environment) {
+            $query = $query->byEnvironment($this->environment);
+        }
+        
+        if ($this->region) {
+            $query = $query->where('region', $this->region);
+        }
+        
+        return $query->select('server_name')->pluck('server_name');
+    }
+    
+    /**
+     * Render the component.
+     */
+    public function render()
+    {
+        // Get and group metrics
+        $metrics = $this->getMetrics();
+        $groupedMetrics = $this->groupMetrics($metrics);
+        
+        // Get alert and inactive server info
+        $alertingServers = $this->alertingServers;
+        $inactiveServers = $this->inactiveServers;
+        
+        // Decide whether to show global alert
+        $showAlert = $alertingServers->isNotEmpty() || $inactiveServers->isNotEmpty();
+        
+        return view('livewire.pulse.multi-server-metrics-card', [
+            'metrics' => $metrics,
+            'groupedMetrics' => $groupedMetrics,
+            'environments' => $this->environments,
+            'regions' => $this->regions,
+            'servers' => $this->servers,
+            'showAlert' => $showAlert,
+            'alertingServers' => $alertingServers,
+            'inactiveServers' => $inactiveServers,
+        ]);
+    }
+}

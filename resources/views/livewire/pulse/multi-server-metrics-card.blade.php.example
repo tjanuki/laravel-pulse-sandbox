@@ -1,0 +1,148 @@
+<x-pulse::card :cols="$cols" :rows="$rows" :class="$class" wire:poll.{{ $refreshInterval }}s="">
+    <x-pulse::card-header :name="$title">
+        <x-slot:icon>
+            @if($showAlert)
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            @else
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+            @endif
+        </x-slot:icon>
+
+        <div class="flex items-center space-x-2">
+            {{-- Environment Filter --}}
+            <select wire:model.live="environment" class="text-xs rounded-md border-0 py-0.5 pl-2 pr-8 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:ring-0">
+                <option value="">All Environments</option>
+                @foreach($environments as $env)
+                    <option value="{{ $env }}">{{ ucfirst($env) }}</option>
+                @endforeach
+            </select>
+
+            {{-- Region Filter (if environment is selected) --}}
+            @if($environment)
+                <select wire:model.live="region" class="text-xs rounded-md border-0 py-0.5 pl-2 pr-8 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:ring-0">
+                    <option value="">All Regions</option>
+                    @foreach($regions as $reg)
+                        <option value="{{ $reg }}">{{ $reg }}</option>
+                    @endforeach
+                </select>
+            @endif
+
+            {{-- Server Filter (if environment is selected) --}}
+            @if($environment)
+                <select wire:model.live="serverName" class="text-xs rounded-md border-0 py-0.5 pl-2 pr-8 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:ring-0">
+                    <option value="">All Servers</option>
+                    @foreach($servers as $server)
+                        <option value="{{ $server->server_name }}">{{ $server->server_name }}</option>
+                    @endforeach
+                </select>
+            @endif
+
+            {{-- Group By Selector --}}
+            <select wire:model.live="groupBy" class="text-xs rounded-md border-0 py-0.5 pl-2 pr-8 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 focus:ring-0">
+                <option value="server">Group by Server</option>
+                <option value="environment">Group by Environment</option>
+                <option value="source">Group by Source</option>
+                <option value="key">Group by Metric</option>
+            </select>
+
+            {{-- Show Only Alerts Toggle --}}
+            <label class="inline-flex items-center space-x-1 text-xs">
+                <input type="checkbox" wire:model.live="showOnlyAlerts" class="rounded border-gray-300 text-indigo-600 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:focus:border-indigo-700 dark:focus:ring-indigo-900">
+                <span class="text-gray-700 dark:text-gray-300">Alerts only</span>
+            </label>
+        </div>
+    </x-pulse::card-header>
+
+    <x-pulse::scroll :expand="$expand">
+        <div class="grid gap-3 p-4">
+            {{-- Alert Summaries --}}
+            @if($showAlert)
+                <div class="flex items-center rounded-lg bg-red-50 p-3 text-red-700 dark:bg-red-950 dark:text-red-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <div>
+                        <span class="font-medium">Alerts detected!</span>
+                        <div class="flex flex-col text-sm">
+                            @if($alertingServers->isNotEmpty())
+                                <span>{{ $alertingServers->count() }} {{ Str::plural('server', $alertingServers->count()) }} with alerts</span>
+                            @endif
+                            @if($inactiveServers->isNotEmpty())
+                                <span>{{ $inactiveServers->count() }} inactive {{ Str::plural('server', $inactiveServers->count()) }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="flex items-center rounded-lg bg-green-50 p-3 text-green-700 dark:bg-green-950 dark:text-green-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="font-medium">All systems operational</span>
+                </div>
+            @endif
+
+            {{-- Metrics Grouped by Selected Grouping --}}
+            @forelse($groupedMetrics as $groupName => $metricsGroup)
+                <div class="mt-2">
+                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        {{ ucfirst($groupBy) }}: {{ $groupName }}
+                    </h3>
+                    
+                    <div class="space-y-2">
+                        @foreach($metricsGroup as $metric)
+                            <div class="flex items-center justify-between rounded-lg border p-3
+                                @if($metric->status === 'critical') border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950
+                                @elseif($metric->status === 'warning') border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950
+                                @else border-gray-200 dark:border-gray-700 @endif">
+                                
+                                <div class="flex flex-col">
+                                    {{-- Show source/key or server based on grouping --}}
+                                    @if($groupBy === 'server')
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $metric->source }}: {{ $metric->key }}</span>
+                                    @elseif($groupBy === 'source')
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $metric->server_name }}: {{ $metric->key }}</span>
+                                    @elseif($groupBy === 'key')
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $metric->server_name }}: {{ $metric->source }}</span>
+                                    @else
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $metric->server_name }}: {{ $metric->source }} - {{ $metric->key }}</span>
+                                    @endif
+                                    
+                                    <span class="text-sm font-medium
+                                        @if($metric->status === 'critical') text-red-700 dark:text-red-300
+                                        @elseif($metric->status === 'warning') text-amber-700 dark:text-amber-300
+                                        @else text-gray-700 dark:text-gray-300 @endif">
+                                        {{ $metric->value }}
+                                    </span>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    {{-- Status indicator --}}
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                                        @if($metric->status === 'critical') bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100
+                                        @elseif($metric->status === 'warning') bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100
+                                        @else bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 @endif">
+                                        {{ ucfirst($metric->status) }}
+                                    </span>
+                                    
+                                    {{-- Timestamp --}}
+                                    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $metric->created_at->diffForHumans() }}
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @empty
+                <x-pulse::no-results>
+                    No metrics match your current filters.
+                </x-pulse::no-results>
+            @endforelse
+        </div>
+    </x-pulse::scroll>
+</x-pulse::card>
