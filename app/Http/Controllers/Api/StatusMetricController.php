@@ -31,13 +31,13 @@ class StatusMetricController extends Controller
         }
 
         // Get the authenticated server from the request (set by VerifyServerApiKey middleware)
-        $server = $request->server;
-        
+        $server = $request->attributes->get('serverRegistration');
+
         // Use server details from the registration, or from the request if available
-        $serverName = $request->server_name ?? $server->server_name;
-        $serverIp = $request->server_ip ?? $server->server_ip;
-        $environment = $request->environment ?? $server->environment;
-        $region = $request->region ?? $server->region;
+        $serverName = $request->input('server_name') ?? $server->server_name;
+        $serverIp = $request->input('server_ip') ?? $server->server_ip;
+        $environment = $request->input('environment') ?? $server->environment;
+        $region = $request->input('region') ?? $server->region;
         
         // Set expiry date for 60 days from now
         $expiresAt = now()->addDays(60);

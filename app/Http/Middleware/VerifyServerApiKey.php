@@ -40,8 +40,8 @@ class VerifyServerApiKey
         // Update the last reported time
         $server->markReported();
         
-        // Add the server to the request for later use
-        $request->merge(['server' => $server]);
+        // Attach the server model to the request for controllers to access
+        $request->attributes->set('serverRegistration', $server);
         
         return $next($request);
     }
